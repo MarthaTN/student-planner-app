@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | Student Planner</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Student Planner</div>
+        <div class="user-controls">
+            <span id="user-display"></span>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <section class="tasks-section">
+            <div class="header-row">
+                <h2>My Active Deadlines</h2>
+                <button class="add-task-btn">+ New Task</button>
+            </div>
+            <div id="task-grid" class="task-grid">
+                </div>
+        </section>
+        
+
+        <aside class="friends-sidebar">
+            <h3>Study Buddies</h3>
+            <div id="friends-list">
+                </div>
+        </aside>
+    </div>
+
+    <div class="theme-switch-wrapper">
+    <label class="theme-switch" for="checkbox">
+        <input type="checkbox" id="checkbox" onclick="themeToggle()" />
+        <span class="slider round"></span>
+    </label>
+    <em>Enable Dark Mode</em>
+</div>
+
+
+    <div id="nudge-overlay"></div>
+
+    <script src="theme.js"></script>
+    <script src="auth.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>
