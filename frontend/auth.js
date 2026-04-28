@@ -33,3 +33,30 @@ async function handleLogin(email, password) {
         alert(data.message);
     }
 }
+
+// 3. CLICK HANDLERS FOR HTML
+function handleSignupClick() {
+    const name = document.getElementById('signup-name').value;
+    const email = document.getElementById('signup-email').value;
+    const password = document.getElementById('signup-password').value;
+    handleSignup(name, email, password);
+}
+
+function handleLoginClick() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    handleLogin(email, password);
+}
+
+// 4. LOGOUT FUNCTION
+async function logout() {
+    const token = localStorage.getItem('planner_token');
+    if (token) {
+        await fetch(`${BASE_URL}/logout`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+    }
+    localStorage.removeItem('planner_token');
+    window.location.href = 'index.html';
+}
