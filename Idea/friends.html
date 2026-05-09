@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blossom Planner — Friends</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🌸</div>
+    <span class="sidebar-logo-text">Blossom Planner</span>
+  </div>
+  <a href="dashboard.html" class="nav-item">
+    <span class="nav-icon">🏠</span> Dashboard
+  </a>
+  <a href="tasks.html" class="nav-item">
+    <span class="nav-icon">✅</span> My Tasks
+  </a>
+  <a href="friends.html" class="nav-item active">
+    <span class="nav-icon">👥</span> Friends
+    <span class="nav-badge" id="sidebarFriendCount">0</span>
+  </a>
+  <a href="notifications.html" class="nav-item">
+    <span class="nav-icon">🔔</span> Notifications
+    <span class="nav-badge" id="sidebarNotifCount">0</span>
+  </a>
+  <a href="settings.html" class="nav-item">
+    <span class="nav-icon">⚙️</span> Settings
+  </a>
+  <div class="sidebar-bottom">
+    <div style="display:flex;align-items:center;gap:0.7rem;padding:0.5rem;margin-bottom:0.8rem">
+      <div class="avatar avatar-sm" id="sidebarAvatar">?</div>
+      <div>
+        <div style="font-size:0.85rem;font-weight:600" id="sidebarName">Loading...</div>
+        <div style="font-size:0.75rem;color:var(--text-muted)">Student</div>
+      </div>
+    </div>
+    <button class="btn-tp btn-ghost btn-full btn-sm" onclick="doLogout()">🚪 Logout</button>
+  </div>
+</aside>
+<main class="main-content">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Friends</h1>
+      <p class="page-subtitle">Find classmates and add them to your network.</p>
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center">
+      <div class="theme-switcher">
+        <button class="theme-btn" data-theme="dark" title="Black theme" aria-label="Black theme" onclick="setTheme('dark')"></button>
+        <button class="theme-btn" data-theme="light" title="Pink theme" aria-label="Pink theme" onclick="setTheme('light')"></button>
+        <button class="theme-btn" data-theme="ocean" title="Blue theme" aria-label="Blue theme" onclick="setTheme('ocean')"></button>
+        <button class="theme-btn" data-theme="sunset" title="Purple theme" aria-label="Purple theme" onclick="setTheme('sunset')"></button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1.1fr;gap:1.5rem;align-items:start;">
+    <div class="tp-card">
+      <h3 style="margin-bottom:1rem">Add a Friend</h3>
+      <form id="friendForm">
+        <div class="form-group">
+          <label class="form-label">Friend Email</label>
+          <input id="friendEmail" type="email" class="tp-input" placeholder="friend@example.com" required>
+        </div>
+        <button class="btn-tp btn-primary btn-full btn-lg" style="margin-top:0.5rem" type="submit">Add Friend</button>
+        <p id="friendMessage" style="margin-top:0.9rem;font-size:0.9rem;color:var(--text-muted)"></p>
+      </form>
+    </div>
+
+    <div class="tp-card">
+      <h3 style="margin-bottom:1rem">Nudge a Friend</h3>
+      <div class="form-group">
+        <label class="form-label" for="nudgeFriendSelect">Step 1: Select a Friend</label>
+        <select id="nudgeFriendSelect" class="tp-select" required>
+          <option value="">Choose a friend...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="nudgeTaskSelect">Step 2: Select a Task</label>
+        <select id="nudgeTaskSelect" class="tp-select" required>
+          <option value="">Choose a task...</option>
+        </select>
+      </div>
+      <button id="sendNudgeBtn" class="btn-tp btn-success btn-full btn-lg" style="margin-top:0.5rem" type="button">👋 Send Nudge</button>
+      <div id="nudgePreview" style="background:var(--card-hover);padding:0.8rem;border-radius:var(--radius);margin-top:1rem;display:none;">
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">You're about to nudge:</div>
+        <div style="font-weight:600;color:var(--text);">📬 <span id="nudgePreviewText"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tp-card" style="margin-top:1.5rem;">
+    <h3 style="margin-bottom:1rem">Your Friends</h3>
+    <div id="friendList"></div>
+  </div>
+</main>
+<script type="module">
+  import { requireAuth, getCurrentUser } from "./auth-guard.js";
+  import { initDB, findUserByEmail, getDB, saveDB, getNotificationsForUser, getTasksForUser } from "./db.js";
+
+  await initDB();
+  requireAuth();
+  const user = getCurrentUser();
+  if (!user) { window.location.href = "index.html"; }
+
+  const savedTheme = localStorage.getItem("tp_theme") || user.theme || "dark";
+  applyTheme(savedTheme);
+
+  window.setTheme = (t) => applyTheme(t);
+  window.doLogout = () => { import("./auth.js").then(m => m.handleLogout()); };
+
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    localStorage.setItem("tp_theme", t);
+    document.querySelectorAll(".theme-btn").forEach(b => b.classList.toggle("active", b.dataset.theme === t));
+  }
+
+  document.getElementById("sidebarAvatar").textContent = user.avatar;
+  document.getElementById("sidebarName").textContent   = user.name.split(" ")[0];
+
+  const friendForm = document.getElementById("friendForm");
+  const friendMessage = document.getElementById("friendMessage");
+  const friendList = document.getElementById("friendList");
+  const nudgeFriendSelect = document.getElementById("nudgeFriendSelect");
+  const nudgeTaskSelect = document.getElementById("nudgeTaskSelect");
+  const nudgeTopicSelect = document.getElementById("nudgeTopicSelect");
+  const sendNudgeBtn = document.getElementById("sendNudgeBtn");
+  const nudgePreview = document.getElementById("nudgePreview");
+  const nudgePreviewText = document.getElementById("nudgePreviewText");
+
+  function refreshSidebar() {
+    const notifications = getNotificationsForUser(user.id).filter(n => !n.read).length;
+    document.getElementById("sidebarNotifCount").textContent = notifications || "";
+    if (!notifications) document.getElementById("sidebarNotifCount").style.display = "none";
+  }
+
+  function populateTaskSelector() {
+    const tasks = getTasksForUser(user.id);
+    if (tasks.length === 0) {
+      nudgeTaskSelect.innerHTML = `<option value="">No tasks to nudge about</option>`;
+      nudgeTaskSelect.disabled = true;
+      nudgePreview.style.display = "none";
+      return;
+    }
+
+    nudgeTaskSelect.innerHTML = `<option value="">Choose a task...</option>` + 
+      tasks.map(t => `<option value="${t.id}">${t.title}</option>`).join("");
+    nudgeTaskSelect.disabled = false;
+  }
+
+  nudgeTaskSelect.addEventListener("change", () => {
+    const taskId = nudgeTaskSelect.value;
+    if (taskId) {
+      const db = getDB();
+      const task = db.tasks.find(t => t.id === taskId);
+      if (task) {
+        nudgePreviewText.textContent = `"${task.title}"`;
+        nudgePreview.style.display = "block";
+      }
+    } else {
+      nudgePreview.style.display = "none";
+    }
+  });
+
+function refreshFriends() {
+  const db = getDB();
+  const currentUser = db.users.find(u => u.id === user.id);
+  if (!currentUser) return;
+
+  // Sidebar count
+  document.getElementById("sidebarFriendCount").textContent = currentUser.friends.length || "";
+  if (!currentUser.friends.length) document.getElementById("sidebarFriendCount").style.display = "none";
+
+  // Populate friend dropdown for nudging
+  const nudgeFriendSelect = document.getElementById("nudgeFriendSelect");
+  nudgeFriendSelect.innerHTML = '<option value="">Choose a friend...</option>';
+  const friends = db.users.filter(u => currentUser.friends.includes(u.id));
+  friends.forEach(friend => {
+    const option = document.createElement("option");
+    option.value = friend.id;
+    option.textContent = friend.name;
+    nudgeFriendSelect.appendChild(option);
+  });
+
+  // Render friend list
+  friendList.innerHTML = friends.map(friend => `
+    <div class="friend-card">
+      <div class="avatar avatar-sm">${friend.avatar}</div>
+      <div class="friend-info">
+        <div class="friend-name">${friend.name}</div>
+        <div class="friend-tasks-count">${friend.email}</div>
+      </div>
+      <button class="btn-tp btn-danger btn-sm remove-friend-btn" data-friend-id="${friend.id}" title="Remove ${friend.name}">Remove</button>
+    </div>
+  `).join("");
+}
+
+function removeFriend(friendId) {
+  const db = getDB();
+  const currentUser = db.users.find(u => u.id === user.id);
+  const friend = db.users.find(u => u.id === friendId);
+  if (!currentUser || !friend) return;
+
+  currentUser.friends = currentUser.friends.filter(id => id !== friendId);
+  friend.friends = friend.friends.filter(id => id !== currentUser.id);
+  saveDB(db);
+  showMessage(`${friend.name} removed from friends.`, "#ff5a8b");
+  refreshFriends();
+  refreshSidebar();
+}
+
+function sendNudge() {
+  const friendId = document.getElementById("nudgeFriendSelect").value;
+  const topic = document.getElementById("nudgeTopicSelect").value;
+
+  if (!friendId || !topic) {
+    showMessage("⚠️ Please choose both a friend and a topic.", "#ff5a8b");
+    return;
+  }
+
+  const db = getDB();
+  const friend = db.users.find(u => u.id === friendId);
+  if (!friend) {
+    showMessage("Friend not found.", "#ff5a8b");
+    return;
+  }
+
+  // Create notification entry in db.json
+  const notification = {
+    id: "n" + Date.now(),
+    userId: friendId,
+    type: "nudge",
+    message: `${user.name} nudged you to ${topic}! 👋`,
+    read: false,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (!Array.isArray(db.notifications)) db.notifications = [];
+  db.notifications.push(notification);
+  saveDB(db);
+
+  // Show preview
+  document.getElementById("nudgePreviewText").textContent = `${friend.name} — ${topic}`;
+  document.getElementById("nudgePreview").style.display = "block";
+
+  showMessage(`✅ Nudged ${friend.name} to ${topic}!`, "#8dd7ff");
+}
+
+
+
+  function showMessage(text, color) {
+    friendMessage.textContent = text;
+    friendMessage.style.color = color;
+    setTimeout(() => { friendMessage.textContent = ""; }, 4000);
+  }
+
+  function nudgeFriend(friendId, friendName, taskId) {
+    if (!taskId) {
+      showMessage("⚠️ Pick a task first! Then click the nudge button.", "#ff5a8b");
+      nudgeTaskSelect.focus();
+      return;
+    }
+
+    const db = getDB();
+    const friend = db.users.find(u => u.id === friendId);
+    const task = db.tasks.find(t => t.id === taskId);
+    
+    if (!friend || !task) {
+      showMessage("Friend or task not found.", "#ff5a8b");
+      return;
+    }
+
+    const notification = {
+      id: "n" + Date.now(),
+      userId: friendId,
+      type: "nudge",
+      message: `${user.name} nudged you about "${task.title}"! 👋`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (!Array.isArray(db.notifications)) db.notifications = [];
+    db.notifications.push(notification);
+    saveDB(db);
+
+    showMessage(`✅ Nudged ${friendName} about "${task.title}"!`, "#8dd7ff");
+  }
+
+  friendForm.addEventListener("submit", event => {
+    event.preventDefault();
+    const email = document.getElementById("friendEmail").value.trim().toLowerCase();
+    if (!email) {
+      showMessage("Enter an email to add a friend.", "#ff5a8b");
+      return;
+    }
+
+    const db = getDB();
+    const currentUser = db.users.find(u => u.id === user.id);
+    const friendUser = findUserByEmail(email);
+    if (!currentUser || !friendUser) {
+      showMessage("No account found with that email.", "#ff5a8b");
+      return;
+    }
+    if (friendUser.id === currentUser.id) {
+      showMessage("You can't add yourself.", "#ff5a8b");
+      return;
+    }
+    if (currentUser.friends.includes(friendUser.id)) {
+      showMessage("That person is already your friend.", "#ff5a8b");
+      return;
+    }
+
+    currentUser.friends.push(friendUser.id);
+    if (!friendUser.friends.includes(currentUser.id)) {
+      friendUser.friends.push(currentUser.id);
+    }
+    saveDB(db);
+    document.getElementById("friendEmail").value = "";
+    showMessage("Friend added!", "#8dd7ff");
+    refreshFriends();
+    refreshSidebar();
+  });
+
+  sendNudgeBtn.addEventListener("click", sendNudge);
+
+  friendList.addEventListener("click", event => {
+    const removeBtn = event.target.closest(".remove-friend-btn");
+    if (removeBtn) {
+      const friendId = removeBtn.dataset.friendId;
+      removeFriend(friendId);
+      return;
+    }
+
+    const nudgeBtn = event.target.closest(".nudge-btn");
+    if (nudgeBtn) {
+      const friendId = nudgeBtn.dataset.friendId;
+      const friendName = nudgeBtn.dataset.friendName;
+      const taskId = nudgeTaskSelect.value;
+      nudgeFriend(friendId, friendName, taskId);
+    }
+  });
+
+  refreshSidebar();
+  refreshFriends();
+  populateTaskSelector();
+</script>
+</body>
+</html>

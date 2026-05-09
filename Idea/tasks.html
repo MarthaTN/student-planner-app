@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blossom Planner — Tasks</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🌸</div>
+    <span class="sidebar-logo-text">Blossom Planner</span>
+  </div>
+  <a href="dashboard.html" class="nav-item">
+    <span class="nav-icon">🏠</span> Dashboard
+  </a>
+  <a href="tasks.html" class="nav-item active">
+    <span class="nav-icon">✅</span> My Tasks
+  </a>
+  <a href="friends.html" class="nav-item">
+    <span class="nav-icon">👥</span> Friends
+    <span class="nav-badge" id="sidebarFriendCount">0</span>
+  </a>
+  <a href="notifications.html" class="nav-item">
+    <span class="nav-icon">🔔</span> Notifications
+    <span class="nav-badge" id="sidebarNotifCount">0</span>
+  </a>
+  <a href="settings.html" class="nav-item">
+    <span class="nav-icon">⚙️</span> Settings
+  </a>
+  <div class="sidebar-bottom">
+    <div style="display:flex;align-items:center;gap:0.7rem;padding:0.5rem;margin-bottom:0.8rem">
+      <div class="avatar avatar-sm" id="sidebarAvatar">?</div>
+      <div>
+        <div style="font-size:0.85rem;font-weight:600" id="sidebarName">Loading...</div>
+        <div style="font-size:0.75rem;color:var(--text-muted)">Student</div>
+      </div>
+    </div>
+    <button class="btn-tp btn-ghost btn-full btn-sm" onclick="doLogout()">🚪 Logout</button>
+  </div>
+</aside>
+<main class="main-content">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">My Tasks</h1>
+      <p class="page-subtitle">Create tasks and keep track of what you need to do.</p>
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center">
+      <div class="theme-switcher">
+        <button class="theme-btn" data-theme="dark" title="Black theme" aria-label="Black theme" onclick="setTheme('dark')"></button>
+        <button class="theme-btn" data-theme="light" title="Pink theme" aria-label="Pink theme" onclick="setTheme('light')"></button>
+        <button class="theme-btn" data-theme="ocean" title="Blue theme" aria-label="Blue theme" onclick="setTheme('ocean')"></button>
+        <button class="theme-btn" data-theme="sunset" title="Purple theme" aria-label="Purple theme" onclick="setTheme('sunset')"></button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1.1fr;gap:1.5rem;align-items:start;">
+    <div class="tp-card">
+      <h3 style="margin-bottom:1rem">Add a Task</h3>
+      <form id="taskForm">
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input id="taskTitle" class="tp-input" placeholder="Finish study notes" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject</label>
+          <input id="taskSubject" class="tp-input" placeholder="Math">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="taskDescription" class="tp-textarea" placeholder="What needs to be done?"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Due Date</label>
+          <input id="taskDueDate" type="date" class="tp-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select id="taskPriority" class="tp-select">
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <input id="taskId" type="hidden">
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select id="taskStatus" class="tp-select">
+            <option value="not-started">Not Started</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:0.6rem">
+          <input id="taskPublic" type="checkbox" style="width:auto;">
+          <label for="taskPublic" style="margin:0;color:var(--text);font-weight:600">Public task</label>
+        </div>
+        <button id="taskSubmitButton" class="btn-tp btn-primary btn-full btn-lg" style="margin-top:0.5rem">Add Task</button>
+        <button id="taskCancel" type="button" class="btn-tp btn-ghost btn-full btn-sm" style="margin-top:0.75rem; display:none;">Cancel edit</button>
+        <p id="taskMessage" style="margin-top:0.9rem;font-size:0.9rem;color:var(--text-muted)"></p>
+      </form>
+    </div>
+
+    <div class="tp-card">
+      <h3 style="margin-bottom:1rem">Your Tasks</h3>
+      <div id="taskList"></div>
+    </div>
+  </div>
+</main>
+<script type="module">
+  import { requireAuth, getCurrentUser } from "./auth-guard.js";
+  import { initDB, createTask, getTasksForUser, updateTask, deleteTask } from "./db.js";
+
+  await initDB();
+  requireAuth();
+  const user = getCurrentUser();
+  if (!user) { window.location.href = "index.html"; }
+
+  const savedTheme = localStorage.getItem("tp_theme") || user.theme || "dark";
+  applyTheme(savedTheme);
+
+  window.setTheme = (t) => applyTheme(t);
+  window.doLogout = () => { import("./auth.js").then(m => m.handleLogout()); };
+
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    localStorage.setItem("tp_theme", t);
+    document.querySelectorAll(".theme-btn").forEach(b => b.classList.toggle("active", b.dataset.theme === t));
+  }
+
+  document.getElementById("sidebarAvatar").textContent = user.avatar;
+  document.getElementById("sidebarName").textContent = user.name.split(" ")[0];
+
+  const taskForm = document.getElementById("taskForm");
+  const taskMessage = document.getElementById("taskMessage");
+  const taskList = document.getElementById("taskList");
+  const taskDueDate = document.getElementById("taskDueDate");
+  const taskSubmitButton = document.getElementById("taskSubmitButton");
+  const taskCancelButton = document.getElementById("taskCancel");
+  const taskIdInput = document.getElementById("taskId");
+  let editTaskId = "";
+
+  taskDueDate.setAttribute("min", new Date().toISOString().split("T")[0]);
+
+  function resetTaskForm() {
+    taskForm.reset();
+    taskIdInput.value = "";
+    editTaskId = "";
+    taskSubmitButton.textContent = "Add Task";
+    taskCancelButton.style.display = "none";
+    taskDueDate.setAttribute("min", new Date().toISOString().split("T")[0]);
+  }
+
+  function populateTaskForm(task) {
+    editTaskId = task.id;
+    taskIdInput.value = task.id;
+    document.getElementById("taskTitle").value = task.title;
+    document.getElementById("taskSubject").value = task.subject;
+    document.getElementById("taskDescription").value = task.description;
+    document.getElementById("taskDueDate").value = task.dueDate;
+    document.getElementById("taskPriority").value = task.priority;
+    document.getElementById("taskStatus").value = task.status;
+    document.getElementById("taskPublic").checked = task.isPublic;
+    taskSubmitButton.textContent = "Save Task";
+    taskCancelButton.style.display = "block";
+  }
+
+  function refreshTasks() {
+    const tasks = getTasksForUser(user.id);
+    if (tasks.length === 0) {
+      taskList.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📝</div><h4>No tasks yet</h4><p>Create your first task to get started.</p></div>`;
+      return;
+    }
+
+    taskList.innerHTML = tasks.map(task => {
+      const statusText = task.status === "completed" ? "Completed" : task.status === "in-progress" ? "In Progress" : "Not Started";
+      return `
+        <div class="task-card priority-${task.priority}" data-task-id="${task.id}">
+          <div class="task-card-header">
+            <div>
+              <div class="task-card-title">${task.title}</div>
+              <div class="task-card-subject">${task.subject || "No subject"}</div>
+            </div>
+            <div class="task-card-badges">
+              <span class="badge-priority badge-${task.priority}">${task.priority}</span>
+              <span class="badge-status badge-${task.status}">${statusText}</span>
+            </div>
+          </div>
+          <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:0.8rem">Due ${task.dueDate}</p>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${task.progress}%"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:0.55rem;font-size:0.82rem;color:var(--text-muted)">
+            <span>${task.progress}% complete</span>
+            <span>${task.isPublic ? "Public" : "Private"}</span>
+          </div>
+          <div class="task-card-actions" style="margin-top:0.9rem;gap:0.45rem;flex-wrap:wrap;">
+            <button class="btn-tp btn-ghost btn-sm" type="button" data-edit-task-id="${task.id}">Edit</button>
+            <button class="btn-tp btn-danger btn-sm" type="button" data-delete-task-id="${task.id}">Delete</button>
+            <select class="tp-select" data-task-status="${task.id}" style="min-width:160px;">
+              <option value="not-started" ${task.status === "not-started" ? "selected" : ""}>Not Started</option>
+              <option value="in-progress" ${task.status === "in-progress" ? "selected" : ""}>In Progress</option>
+              <option value="completed" ${task.status === "completed" ? "selected" : ""}>Completed</option>
+            </select>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  function showMessage(text, color) {
+    taskMessage.textContent = text;
+    taskMessage.style.color = color;
+    setTimeout(() => { taskMessage.textContent = ""; }, 4000);
+  }
+
+  function setTaskStatus(taskId, status) {
+    const task = getTasksForUser(user.id).find(t => t.id === taskId);
+    if (!task) { return; }
+    const progress = status === "completed" ? 100 : status === "in-progress" ? 40 : 0;
+    updateTask({ ...task, status, progress });
+    refreshTasks();
+    showMessage(`Task marked ${status.replace("-", " ")}.`, "#8dd7ff");
+  }
+
+  taskForm.addEventListener("submit", event => {
+    event.preventDefault();
+    const title = document.getElementById("taskTitle").value.trim();
+    const subject = document.getElementById("taskSubject").value.trim();
+    const description = document.getElementById("taskDescription").value.trim();
+    const dueDateValue = document.getElementById("taskDueDate").value;
+    const priority = document.getElementById("taskPriority").value;
+    const status = document.getElementById("taskStatus").value;
+    const isPublic = document.getElementById("taskPublic").checked;
+
+    if (!title || !dueDateValue) {
+      showMessage("Please enter a title and due date.", "#ff5a8b");
+      return;
+    }
+
+    const progress = status === "completed" ? 100 : status === "in-progress" ? 40 : 0;
+
+    if (editTaskId) {
+      const existingTask = getTasksForUser(user.id).find(t => t.id === editTaskId);
+      updateTask({
+        id: editTaskId,
+        userId: user.id,
+        title,
+        subject,
+        description,
+        dueDate: dueDateValue,
+        priority,
+        status,
+        isPublic,
+        progress,
+        tags: existingTask?.tags || [],
+        createdAt: existingTask?.createdAt || new Date().toISOString(),
+      });
+      showMessage("Task updated successfully.", "#8dd7ff");
+    } else {
+      createTask({
+        userId: user.id,
+        title,
+        subject,
+        description,
+        dueDate: dueDateValue,
+        priority,
+        status,
+        isPublic,
+        tags: [],
+        progress,
+        createdAt: new Date().toISOString(),
+      });
+      showMessage("Task added!", "#8dd7ff");
+    }
+
+    resetTaskForm();
+    refreshTasks();
+  });
+
+  taskCancelButton.addEventListener("click", resetTaskForm);
+
+  taskList.addEventListener("click", event => {
+    const editButton = event.target.closest("[data-edit-task-id]");
+    const deleteButton = event.target.closest("[data-delete-task-id]");
+
+    if (editButton) {
+      const taskId = editButton.dataset.editTaskId;
+      const task = getTasksForUser(user.id).find(t => t.id === taskId);
+      if (task) { populateTaskForm(task); }
+      return;
+    }
+
+    if (deleteButton) {
+      const taskId = deleteButton.dataset.deleteTaskId;
+      deleteTask(taskId);
+      refreshTasks();
+      showMessage("Task deleted.", "#ff5a8b");
+    }
+  });
+
+  taskList.addEventListener("change", event => {
+    const select = event.target.closest("[data-task-status]");
+    if (!select) { return; }
+    const taskId = select.dataset.taskStatus;
+    setTaskStatus(taskId, select.value);
+  });
+
+  refreshTasks();
+</script>
+</body>
+</html>

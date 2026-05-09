@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blossom Planner — Settings</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🌸</div>
+    <span class="sidebar-logo-text">Blossom Planner</span>
+  </div>
+  <a href="dashboard.html" class="nav-item">
+    <span class="nav-icon">🏠</span> Dashboard
+  </a>
+  <a href="tasks.html" class="nav-item">
+    <span class="nav-icon">✅</span> My Tasks
+  </a>
+  <a href="friends.html" class="nav-item">
+    <span class="nav-icon">👥</span> Friends
+    <span class="nav-badge" id="sidebarFriendCount">0</span>
+  </a>
+  <a href="notifications.html" class="nav-item">
+    <span class="nav-icon">🔔</span> Notifications
+    <span class="nav-badge" id="sidebarNotifCount">0</span>
+  </a>
+  <a href="settings.html" class="nav-item active">
+    <span class="nav-icon">⚙️</span> Settings
+  </a>
+  <div class="sidebar-bottom">
+    <div style="display:flex;align-items:center;gap:0.7rem;padding:0.5rem;margin-bottom:0.8rem">
+      <div class="avatar avatar-sm" id="sidebarAvatar">?</div>
+      <div>
+        <div style="font-size:0.85rem;font-weight:600" id="sidebarName">Loading...</div>
+        <div style="font-size:0.75rem;color:var(--text-muted)">Student</div>
+      </div>
+    </div>
+    <button class="btn-tp btn-ghost btn-full btn-sm" onclick="doLogout()">🚪 Logout</button>
+  </div>
+</aside>
+<main class="main-content">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Settings</h1>
+      <p class="page-subtitle">This page is coming soon.</p>
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center">
+      <div class="theme-switcher">
+        <button class="theme-btn" data-theme="dark" title="Black theme" aria-label="Black theme" onclick="setTheme('dark')"></button>
+        <button class="theme-btn" data-theme="light" title="Pink theme" aria-label="Pink theme" onclick="setTheme('light')"></button>
+        <button class="theme-btn" data-theme="ocean" title="Blue theme" aria-label="Blue theme" onclick="setTheme('ocean')"></button>
+        <button class="theme-btn" data-theme="sunset" title="Purple theme" aria-label="Purple theme" onclick="setTheme('sunset')"></button>
+      </div>
+    </div>
+  </div>
+  <div class="tp-card">
+    <h2>Settings</h2>
+    <p style="color:var(--text-muted);">Settings controls will be available soon.</p>
+  </div>
+</main>
+<script type="module">
+  import { requireAuth, getCurrentUser } from "./auth-guard.js";
+  requireAuth();
+  const user = getCurrentUser();
+  if (!user) { window.location.href = "index.html"; }
+
+  const savedTheme = localStorage.getItem("tp_theme") || user.theme || "dark";
+  applyTheme(savedTheme);
+
+  window.setTheme = (t) => applyTheme(t);
+  window.doLogout = () => { import("./auth.js").then(m => m.handleLogout()); };
+
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    localStorage.setItem("tp_theme", t);
+    document.querySelectorAll(".theme-btn").forEach(b => b.classList.toggle("active", b.dataset.theme === t));
+  }
+
+  document.getElementById("sidebarAvatar").textContent = user.avatar;
+  document.getElementById("sidebarName").textContent   = user.name.split(" ")[0];
+</script>
+</body>
+</html>

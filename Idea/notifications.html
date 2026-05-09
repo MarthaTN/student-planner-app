@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blossom Planner — Notifications</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🌸</div>
+    <span class="sidebar-logo-text">Blossom Planner</span>
+  </div>
+  <a href="dashboard.html" class="nav-item">
+    <span class="nav-icon">🏠</span> Dashboard
+  </a>
+  <a href="tasks.html" class="nav-item">
+    <span class="nav-icon">✅</span> My Tasks
+  </a>
+  <a href="friends.html" class="nav-item">
+    <span class="nav-icon">👥</span> Friends
+    <span class="nav-badge" id="sidebarFriendCount">0</span>
+  </a>
+  <a href="notifications.html" class="nav-item active">
+    <span class="nav-icon">🔔</span> Notifications
+    <span class="nav-badge" id="sidebarNotifCount">0</span>
+  </a>
+  <a href="settings.html" class="nav-item">
+    <span class="nav-icon">⚙️</span> Settings
+  </a>
+  <div class="sidebar-bottom">
+    <div style="display:flex;align-items:center;gap:0.7rem;padding:0.5rem;margin-bottom:0.8rem">
+      <div class="avatar avatar-sm" id="sidebarAvatar">?</div>
+      <div>
+        <div style="font-size:0.85rem;font-weight:600" id="sidebarName">Loading...</div>
+        <div style="font-size:0.75rem;color:var(--text-muted)">Student</div>
+      </div>
+    </div>
+    <button class="btn-tp btn-ghost btn-full btn-sm" onclick="doLogout()">🚪 Logout</button>
+  </div>
+</aside>
+<main class="main-content">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Notifications</h1>
+      <p class="page-subtitle">Stay updated with your tasks, friends, and more.</p>
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center">
+      <div class="theme-switcher">
+        <button class="theme-btn" data-theme="dark" title="Black theme" aria-label="Black theme" onclick="setTheme('dark')"></button>
+        <button class="theme-btn" data-theme="light" title="Pink theme" aria-label="Pink theme" onclick="setTheme('light')"></button>
+        <button class="theme-btn" data-theme="ocean" title="Blue theme" aria-label="Blue theme" onclick="setTheme('ocean')"></button>
+        <button class="theme-btn" data-theme="sunset" title="Purple theme" aria-label="Purple theme" onclick="setTheme('sunset')"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tp-card" style="max-width:700px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+      <h3 style="margin:0;">Your Notifications</h3>
+      <button id="markAllReadBtn" class="btn-tp btn-ghost btn-sm" style="display:none;">Mark all as read</button>
+    </div>
+    <div id="notificationList"></div>
+  </div>
+</main>
+<script type="module">
+  import { requireAuth, getCurrentUser } from "./auth-guard.js";
+  import { initDB, getNotificationsForUser, markNotificationRead, markAllNotificationsRead } from "./db.js";
+
+  await initDB();
+  requireAuth();
+  const user = getCurrentUser();
+  if (!user) { window.location.href = "index.html"; }
+
+  const savedTheme = localStorage.getItem("tp_theme") || user.theme || "dark";
+  applyTheme(savedTheme);
+
+  window.setTheme = (t) => applyTheme(t);
+  window.doLogout = () => { import("./auth.js").then(m => m.handleLogout()); };
+
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    localStorage.setItem("tp_theme", t);
+    document.querySelectorAll(".theme-btn").forEach(b => b.classList.toggle("active", b.dataset.theme === t));
+  }
+
+  document.getElementById("sidebarAvatar").textContent = user.avatar;
+  document.getElementById("sidebarName").textContent   = user.name.split(" ")[0];
+
+  const notificationList = document.getElementById("notificationList");
+  const markAllReadBtn = document.getElementById("markAllReadBtn");
+
+  function getNotifIcon(type) {
+    const icons = { reminder: "⏰", friend: "👥", suggestion: "💡", nudge: "👋" };
+    return icons[type] || "📢";
+  }
+
+  function getNotifColor(type) {
+    const colors = { reminder: "#ff5a8b", friend: "#8dd7ff", suggestion: "#b4e7ff", nudge: "#ffc1a0" };
+    return colors[type] || "var(--text-muted)";
+  }
+
+  function refreshNotifications() {
+    const notifs = getNotificationsForUser(user.id);
+    const unreadCount = notifs.filter(n => !n.read).length;
+
+    markAllReadBtn.style.display = unreadCount > 0 ? "block" : "none";
+
+    if (notifs.length === 0) {
+      notificationList.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📭</div>
+          <h4>No notifications</h4>
+          <p>You're all caught up!</p>
+        </div>`;
+      return;
+    }
+
+    notificationList.innerHTML = notifs.map(notif => `
+      <div class="notification-item ${notif.read ? "" : "notification-unread"}" data-notif-id="${notif.id}">
+        <div style="display:flex;gap:0.8rem;align-items:flex-start;">
+          <div style="font-size:1.4rem;">${getNotifIcon(notif.type)}</div>
+          <div style="flex:1;">
+            <div style="font-weight:600;color:var(--text);margin-bottom:0.2rem;">${notif.type.charAt(0).toUpperCase() + notif.type.slice(1)}</div>
+            <p style="color:var(--text-muted);font-size:0.9rem;margin:0.3rem 0;">${notif.message}</p>
+            <div style="font-size:0.8rem;color:var(--text-muted);">${new Date(notif.createdAt).toLocaleDateString()} ${new Date(notif.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+          </div>
+          <div style="display:flex;gap:0.4rem;">
+            ${!notif.read ? `<button class="btn-tp btn-ghost btn-sm mark-read-btn" data-notif-id="${notif.id}">Mark read</button>` : ""}
+            <button class="btn-tp btn-danger btn-sm delete-notif-btn" data-notif-id="${notif.id}">Delete</button>
+          </div>
+        </div>
+      </div>`).join("");
+  }
+
+  notificationList.addEventListener("click", event => {
+    const markReadBtn = event.target.closest(".mark-read-btn");
+    const deleteBtn = event.target.closest(".delete-notif-btn");
+
+    if (markReadBtn) {
+      const notifId = markReadBtn.dataset.notifId;
+      markNotificationRead(notifId);
+      refreshNotifications();
+      return;
+    }
+
+    if (deleteBtn) {
+      const notifId = deleteBtn.dataset.notifId;
+      import("./db.js").then(async m => {
+        const db = m.getDB();
+        db.notifications = db.notifications.filter(n => n.id !== notifId);
+        m.saveDB(db);
+        refreshNotifications();
+      });
+    }
+  });
+
+  markAllReadBtn.addEventListener("click", () => {
+    markAllNotificationsRead(user.id);
+    refreshNotifications();
+  });
+
+  refreshNotifications();
+</script>
+

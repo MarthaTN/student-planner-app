@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blossom Planner — Login</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Theme Switcher (top-right) -->
+  <style>
+    .auth-theme-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 1.5rem;
+    }
+    .hero-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .hero-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.12;
+    }
+    .blob1 { width: 400px; height: 400px; background: var(--accent);  top: -100px; right: -100px; }
+    .blob2 { width: 300px; height: 300px; background: var(--accent2); bottom: -80px; left: -80px; }
+    .blob3 { width: 200px; height: 200px; background: var(--accent3); top: 40%; left: 40%; }
+    .auth-page { position: relative; z-index: 1; }
+  </style>
+</head>
+<body>
+
+<div class="hero-bg">
+  <div class="hero-blob blob1"></div>
+  <div class="hero-blob blob2"></div>
+  <div class="hero-blob blob3"></div>
+</div>
+
+<div class="auth-page">
+  <div class="auth-container">
+
+    <!-- Logo -->
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🌸</div>
+      <h1>Blossom Planner</h1>
+      <p>Smart Student Planner · Social Accountability</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin"  onclick="switchTab('login')">Login</button>
+      <button class="auth-tab"        id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- Alert -->
+    <div id="authError" class="tp-alert tp-alert-error"></div>
+
+    <!-- Auth Card -->
+    <div class="auth-card">
+
+      <!-- LOGIN FORM -->
+      <div id="loginForm">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="loginEmail" type="email" class="tp-input" placeholder="you@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input id="loginPassword" type="password" class="tp-input" placeholder="••••••••">
+        </div>
+        <button class="btn-tp btn-primary btn-full btn-lg" style="margin-top:0.5rem" onclick="doLogin()">
+          ⚡ Login to TaskPulse
+        </button>
+        <p style="text-align:center;margin-top:1rem;font-size:0.85rem;color:var(--text-muted)">
+          Demo: <strong style="color:var(--text)">demo@taskpulse.com</strong> / <strong style="color:var(--text)">demo123</strong>
+        </p>
+      </div>
+
+      <!-- SIGNUP FORM -->
+      <div id="signupForm" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input id="signupName" type="text" class="tp-input" placeholder="Jane Doe">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="signupEmail" type="email" class="tp-input" placeholder="you@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input id="signupPassword" type="password" class="tp-input" placeholder="Min. 6 characters">
+        </div>
+        <button class="btn-tp btn-success btn-full btn-lg" style="margin-top:0.5rem" onclick="doSignup()">
+          🚀 Create Account
+        </button>
+      </div>
+
+    </div><!-- /auth-card -->
+
+  </div>
+</div>
+
+<script type="module">
+  import { initDB } from "./db.js";
+  import { handleLogin, handleSignup } from "./auth.js";
+
+  await initDB();
+
+  // Apply saved theme
+  const saved = localStorage.getItem("tp_theme") || "dark";
+  applyTheme(saved);
+
+  window.doLogin = () => {
+    const email    = document.getElementById("loginEmail").value.trim().toLowerCase();
+    const password = document.getElementById("loginPassword").value;
+    handleLogin(email, password);
+  };
+
+  window.doSignup = () => {
+    const name     = document.getElementById("signupName").value.trim();
+    const email    = document.getElementById("signupEmail").value.trim().toLowerCase();
+    const password = document.getElementById("signupPassword").value;
+    handleSignup(name, email, password);
+  };
+
+  window.switchTab = (tab) => {
+    document.getElementById("loginForm").style.display  = tab === "login"  ? "block" : "none";
+    document.getElementById("signupForm").style.display = tab === "signup" ? "block" : "none";
+    document.getElementById("tabLogin").classList.toggle("active",  tab === "login");
+    document.getElementById("tabSignup").classList.toggle("active", tab === "signup");
+  };
+
+  window.setTheme = (t) => applyTheme(t);
+
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    localStorage.setItem("tp_theme", t);
+    document.querySelectorAll(".theme-btn").forEach(b =>
+      b.classList.toggle("active", b.dataset.theme === t));
+  }
+
+  // Allow Enter key
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    if (document.getElementById("loginForm").style.display !== "none") window.doLogin();
+    else window.doSignup();
+  });
+</script>
+
+</body>
+</html>
