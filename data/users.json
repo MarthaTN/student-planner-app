@@ -7,5 +7,23 @@
     "friends": [],
     "profileImage": "",
     "backgroundImage": ""
+  },
+  {
+    "id": 1777366790692,
+    "name": "MarthaT",
+    "email": "marthat@gmail.com",
+    "password": "$2b$10$8CSEwXHstDvmv6.LT2UoZeHrMBhe1dMrIL6NLtdRr6.jJlQwE1F06",
+    "friends": [],
+    "profileImage": "",
+    "backgroundImage": ""
+  },
+  {
+    "id": 1777369049736,
+    "name": "Mona",
+    "email": "mana@gmail",
+    "password": "$2b$10$GFb3RmPfEJ/SHcmhFET3deUzmTppsZSuMHGBQkSzvksh8W5PI4aki",
+    "friends": [],
+    "profileImage": "",
+    "backgroundImage": ""
   }
 ]
